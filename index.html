@@ -6,7 +6,7 @@
 <title>SPY · OHLC por hora</title>
 <style>
 :root{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#172331;background:#f5f7fb}
-*{box-sizing:border-box}body{margin:0;padding:20px}main{max-width:1000px;margin:auto}h1{margin:0 0 5px;font-size:28px}p{color:#536274;line-height:1.45}.panel{background:white;border:1px solid #dfe5ed;border-radius:15px;padding:18px;margin:15px 0}button{font:inherit;background:#175cd3;color:white;border:0;border-radius:9px;padding:12px 18px;margin:12px 10px 0 0;cursor:pointer}button.secondary{background:#e8eef9;color:#18447c}button:disabled{opacity:.5}.status{font-size:14px;margin:12px 0;color:#42556a}.error{color:#a42525}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;white-space:nowrap}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #e9edf2}th:first-child,td:first-child{text-align:left}th{font-size:13px;color:#58677a}td{font-size:14px}.negative{color:#b42318}.positive{color:#087a50}.small{font-size:13px}.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{background:#f3f6fb;padding:12px;border-radius:9px;flex:1;min-width:160px}.stat b{display:block;font-size:22px;margin-top:6px}
+*{box-sizing:border-box}body{margin:0;padding:20px}main{max-width:1000px;margin:auto}h1{margin:0 0 5px;font-size:28px}p{color:#536274;line-height:1.45}.panel{background:white;border:1px solid #dfe5ed;border-radius:15px;padding:18px;margin:15px 0}button{font:inherit;background:#175cd3;color:white;border:0;border-radius:9px;padding:12px 18px;margin:12px 10px 0 0;cursor:pointer}button.secondary{background:#e8eef9;color:#18447c}button:disabled{opacity:.5}.status{font-size:14px;margin:12px 0;color:#42556a}.error{color:#a42525}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums;white-space:nowrap}th,td{text-align:right;padding:12px 9px;border-bottom:1px solid #e9edf2}th:first-child,td:first-child{text-align:left}th{font-size:13px;color:#58677a}td{font-size:14px}.negative{color:#b42318;font-weight:700}.positive{color:#175cd3;font-weight:700}.flat{color:#64748b}.highmark{background:#e8f0ff;color:#164bb0;font-weight:700}.lowmark{background:#fff0ee;color:#a52a21;font-weight:700}.legend{display:flex;gap:15px;flex-wrap:wrap;font-size:13px}.legend span{font-weight:700}.stat b{font-variant-numeric:tabular-nums}.small{font-size:13px}.stats{display:flex;gap:12px;flex-wrap:wrap}.stat{background:#f3f6fb;padding:12px;border-radius:9px;flex:1;min-width:160px}.stat b{display:block;font-size:22px;margin-top:6px}
 </style>
 </head>
 <body>
@@ -21,10 +21,10 @@
 <div class="panel"><div class="stats">
 <div class="stat">Última sesión mostrada<b id="date">—</b></div>
 <div class="stat">Apertura observada<b id="open">—</b></div>
-<div class="stat">Mínimo observado<b id="low">—</b></div>
+<div class="stat">Máximo observado<b id="high">—</b></div><div class="stat">Mínimo observado<b id="low">—</b></div><div class="stat">Cambio apertura → último cierre<b id="net">—</b></div>
 </div></div>
-<div class="panel table-wrap"><table><thead><tr><th>Hora de vela (ET)</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Rango H−L</th><th>Cambio C−O</th></tr></thead><tbody id="rows"><tr><td colspan="7">Cargando datos…</td></tr></tbody></table>
-<p class="small">Los horarios indican el inicio de cada vela según el proveedor. Las velas de 1 hora de Twelve Data pueden no coincidir exactamente con bloques de 9:30–10:30. La vela en curso es provisional. Los datos pueden diferir de Robinhood o Stock Analysis; no se mezclan fuentes.</p></div>
+<div class="panel table-wrap"><div class="legend"><span class="positive">Azul: vela alcista</span><span class="negative">Rojo: vela bajista</span><span class="flat">Gris: sin cambio</span></div><table><thead><tr><th>Hora de vela (ET)</th><th>Open</th><th>High</th><th>Low</th><th>Close</th><th>Rango H−L</th><th>Cambio C−O</th></tr></thead><tbody id="rows"><tr><td colspan="7">Cargando datos…</td></tr></tbody></table>
+<p class="small">Los máximos y mínimos destacados corresponden a las velas recibidas de la sesión mostrada, no necesariamente al máximo o mínimo oficial diario. Los colores indican el cambio de precio de cada vela, no prueban por sí solos fuerza compradora o vendedora. Los horarios indican el inicio de cada vela según el proveedor. Las velas de 1 hora de Twelve Data pueden no coincidir exactamente con bloques de 9:30–10:30. La vela en curso es provisional. Los datos pueden diferir de Robinhood o Stock Analysis; no se mezclan fuentes.</p></div>
 </main>
 <script>
 'use strict';
@@ -50,18 +50,23 @@ async function load(){
   const date=regular[regular.length-1].datetime.slice(0,10);
   const today=regular.filter(v=>v.datetime.startsWith(date));
   const currentDate=nyDate(),now=nyMinutes();
+  const sessionHigh=Math.max(...today.map(v=>Number(v.high)));
+  const sessionLow=Math.min(...today.map(v=>Number(v.low)));
+  const firstOpen=Number(today[0].open),lastClose=Number(today[today.length-1].close);
   const body=$('rows');body.replaceChildren();
   for(const v of today){
    const start=minutes(v.datetime.slice(11,16));
    const partial=date===currentDate&&now>=start&&now<Math.min(start+60,960);
    const cells=[clock(start)+(partial?' · en curso':''),fmt(v.open),fmt(v.high),fmt(v.low),fmt(v.close),fmt(Number(v.high)-Number(v.low)),fmt(Number(v.close)-Number(v.open))];
    const tr=document.createElement('tr');
-   cells.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;if(i===6)td.className=Number(v.close)>=Number(v.open)?'positive':'negative';tr.appendChild(td)});
+   cells.forEach((value,i)=>{const td=document.createElement('td');td.textContent=value;const change=Number(v.close)-Number(v.open);if(i===6){td.textContent=(change>0?'+':'')+fmt(change);td.className=change>0?'positive':change<0?'negative':'flat'}if(i===3&&Number(v.low)===sessionLow)td.classList.add('lowmark');if(i===2&&Number(v.high)===sessionHigh)td.classList.add('highmark');tr.appendChild(td)});
    body.appendChild(tr);
   }
   $('date').textContent=date;
   $('open').textContent='$'+fmt(today[0].open);
-  $('low').textContent='$'+fmt(Math.min(...today.map(v=>Number(v.low))));
+  $('high').textContent='$'+fmt(sessionHigh);
+  $('low').textContent='$'+fmt(sessionLow);
+  const net=lastClose-firstOpen; $('net').textContent=(net>0?'+':'')+fmt(net)+' ('+(net/firstOpen*100).toFixed(2)+'%)'; $('net').className=net>0?'positive':net<0?'negative':'flat';
   $('status').textContent=`Consulta correcta · ${today.length} velas · ${new Date().toLocaleTimeString('es-US')} · Sesión ${date}${date!==currentDate?' (no es hoy)':''}`;
  }catch(error){$('status').className='status error';$('status').textContent=`No se pudo consultar: ${error.message}`;}
  finally{busy=false;$('load').disabled=false}
