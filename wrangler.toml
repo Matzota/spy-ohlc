@@ -2,6 +2,7 @@
 name = "spy-ohlc-api"
 main = "worker.js"
 compatibility_date = "2026-11-17"
+preview_urls = true
 
 [[d1_databases]]
 binding = "DB"
