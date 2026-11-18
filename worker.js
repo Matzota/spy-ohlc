@@ -331,21 +331,37 @@ export default {
     }
   },
 
-  async scheduled(event, env, ctx) {
-    ctx.waitUntil(
-      (async () => {
-        const data = await providerData(env);
-        const count = await saveCandles(env, data);
+  
+async scheduled(event, env, ctx) {
+  ctx.waitUntil(
+    (async () => {
+      const nowNY = newYorkNow();
+      const hour = Number(nowNY.slice(11, 13));
+      const minute = Number(nowNY.slice(14, 16));
+      const minutes = hour * 60 + minute;
 
-        console.log(
-          `SPY closed candles saved/updated: ${count}`
-        );
-      })().catch(error =>
-        console.error(
-          "Scheduled capture failed",
-          error
-        )
-      )
-    );
-  }
+      const weekday = new Intl.DateTimeFormat("en-US", {
+        timeZone: "America/New_York",
+        weekday: "short"
+      }).format(new Date());
+
+      // Solo lunes a viernes, de 9:30 a 16:30 ET.
+      if (
+        !["Mon", "Tue", "Wed", "Thu", "Fri"].includes(weekday) ||
+        minutes < 570 ||
+        minutes > 990
+      ) {
+        console.log("Outside SPY capture window");
+        return;
+      }
+
+      const data = await providerData(env);
+      const count = await saveCandles(env, data);
+
+      console.log(`SPY closed candles saved/updated: ${count}`);
+    })().catch(error =>
+      console.error("Scheduled capture failed", error)
+    )
+  );
+}
 };
