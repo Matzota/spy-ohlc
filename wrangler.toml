@@ -1,0 +1,14 @@
+
+name = "spy-ohlc-api"
+main = "worker.js"
+compatibility_date = "2026-11-17"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "spy-ohlc-history"
+database_id = "5abc22aa-ffdd-4bda-a71b-7a5e469fe932"
+
+[[previews.d1_databases]]
+binding = "DB"
+database_name = "spy-ohlc-preview"
+database_id = "9dfafb94-fdc1-4b33-b6ab-3c19335b0459"
