@@ -42,4 +42,72 @@ $('status').textContent=`Consulta correcta · ${today.length} velas · ${new Dat
 }catch(err){$('status').className='status error';$('status').textContent='Error al consultar: '+err.message+'; comprueba el endpoint de Cloudflare y vuelve a intentar.'}finally{busy=false;$('load').disabled=false}}
 $('load').addEventListener('click',load);$('auto').addEventListener('click',()=>{if(timer){clearInterval(timer);timer=null;$('auto').textContent='Activar actualización cada 2 min'}else{timer=setInterval(load,120000);$('auto').textContent='Detener actualización';load()}});
 $('copy').addEventListener('click',async()=>{if(!report)return;try{await navigator.clipboard.writeText(report);$('status').textContent='Análisis copiado. Pégalo en nuestra conversación.'}catch(e){$('status').textContent='No se pudo copiar automáticamente; selecciona el texto del panel de análisis.'}});load();
+
+const HISTORY_API = API.replace('/ohlc', '/history/status');
+const historyPanel = $('historical-plan');
+const historyStats = historyPanel.querySelector('.stats');
+
+historyStats.innerHTML = `
+<div class="stat">Almacenamiento<b id="hist-storage">Verificando...</b></div>
+<div class="stat">Sesiones guardadas<b id="hist-sessions">—</b></div>
+<div class="stat">Velas almacenadas<b id="hist-candles">—</b></div>
+<div class="stat">Primer registro<b id="hist-first">—</b></div>
+<div class="stat">Último registro<b id="hist-last">—</b></div>
+<div class="stat">Progreso hacia 20 sesiones<b id="hist-progress">—</b></div>
+<div class="stat">Próxima revisión<b>17 dic 2026</b></div>
+<div class="stat">Revisión periódica<b>Cada jueves</b></div>
+`;
+
+const progressBar = document.createElement('progress');
+progressBar.max = 20;
+progressBar.value = 0;
+progressBar.style.cssText = 'width:100%;height:20px;margin-top:15px;accent-color:#175cd3';
+progressBar.setAttribute('aria-label', 'Progreso histórico');
+historyStats.after(progressBar);
+
+let historyBusy = false;
+
+async function loadHistory(){
+  if(historyBusy)return;
+  historyBusy = true;
+  try{
+    const res = await fetch(HISTORY_API,{cache:'no-store'});
+    if(!res.ok)throw Error('HTTP '+res.status);
+    const d = await res.json();
+    if(d.storage_enabled !== true)throw Error('Almacenamiento no habilitado');
+    if(!Number.isInteger(d.sessions)||d.sessions<0||
+       !Number.isInteger(d.candles)||d.candles<0){
+      throw Error('Datos históricos inválidos');
+    }
+
+    $('hist-storage').textContent = 'Habilitado';
+    $('hist-storage').style.color = '#16803c';
+    $('hist-sessions').textContent = d.sessions;
+    $('hist-candles').textContent = d.candles;
+    $('hist-first').textContent = d.earliest_datetime?.slice(0,10)||'—';
+    $('hist-last').textContent = d.latest_datetime?.slice(0,10)||'—';
+    $('hist-progress').textContent = Math.round(d.sessions/20*100)+'%';
+    progressBar.value = Math.min(d.sessions,20);
+
+    $('history-note').textContent =
+      'Datos consultados directamente en Cloudflare D1. Última verificación: '+
+      new Date().toLocaleString('es-US')+
+      '. El contador incluye sesiones con registros, que pueden estar incompletas.';
+
+  }catch(err){
+    $('hist-storage').textContent = 'Sin verificar';
+    $('hist-storage').style.color = '#b42318';
+    ['hist-sessions','hist-candles','hist-first','hist-last','hist-progress'].forEach(id=>$(id).textContent='—');
+    progressBar.value = 0;
+    $('history-note').textContent =
+      'No se pudo verificar el historial: '+err.message;
+  }finally{
+    historyBusy = false;
+  }
+}
+
+$('load').addEventListener('click',loadHistory);
+setInterval(loadHistory,120000);
+loadHistory();
+
 </script></body></html>
