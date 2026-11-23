@@ -128,7 +128,52 @@ function isClosedRegularSessionCandle(datetime, nowNY) {
   // Esperar 2 minutos despues del cierre
   return nowMinutes >= end + 2;
 }
+async function monitorDataQuality(env, dt, open, high, low, close, volume) {
+  const alerts = [];
 
+  if (!Number.isSafeInteger(volume) || volume <= 0) {
+    alerts.push({
+      type: "invalid_volume",
+      severity: "warning",
+      observed: Number.isFinite(volume) ? volume : null,
+      reference: null,
+      description: "Missing or invalid hourly volume."
+    });
+  }
+
+  if (open > 0) {
+    const rangePercent = ((high - low) / open) * 100;
+
+    if (rangePercent >= 3) {
+      alerts.push({
+        type: "unusual_hourly_range",
+        severity: "warning",
+        observed: rangePercent,
+        reference: 3,
+        description: "Hourly price range exceeds threshold."
+      });
+    }
+  }
+
+  for (const alert of alerts) {
+    await env.DB.prepare(`
+      INSERT INTO spy_data_quality
+        (datetime, anomaly_type, severity,
+         observed_value, reference_value,
+         description, status)
+      VALUES (?, ?, ?, ?, ?, ?, 'pending')
+      ON CONFLICT(datetime, anomaly_type)
+      DO NOTHING
+    `).bind(
+      dt,
+      alert.type,
+      alert.severity,
+      alert.observed,
+      alert.reference,
+      alert.description
+    ).run();
+  }
+}
 async function saveCandles(env, data) {
   if (!env.DB) {
     throw new Error("Missing D1 binding DB");
@@ -186,6 +231,11 @@ async function saveCandles(env, data) {
       close,
       Number.isSafeInteger(volume) ? volume : null
     ).run();
+    try {
+      await monitorDataQuality(env, dt, open, high, low, close, volume);
+    } catch (error) {
+      console.error("Data quality monitor failed", error);
+    }
 
     count++;
   }
