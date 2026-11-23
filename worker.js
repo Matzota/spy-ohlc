@@ -144,7 +144,7 @@ async function monitorDataQuality(env, dt, open, high, low, close, volume) {
   if (open > 0) {
     const rangePercent = ((high - low) / open) * 100;
 
-    if (rangePercent >= 3) {
+  if (rangePercent >= 0) {
       alerts.push({
         type: "unusual_hourly_range",
         severity: "warning",
