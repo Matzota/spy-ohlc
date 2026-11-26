@@ -1,3 +1,4 @@
+import { monitorDataQuality } from "./data-quality.js";
 
 const ALLOWED_ORIGIN = "https://matzota.github.io";
 const CACHE_KEY = new Request("https://spy-ohlc-cache.internal/ohlc");
@@ -186,6 +187,11 @@ async function saveCandles(env, data) {
       close,
       Number.isSafeInteger(volume) ? volume : null
     ).run();
+    try {
+      await monitorDataQuality(env, dt, open, high, low, volume);
+    } catch (error) {
+      console.error("Data quality monitor failed", error);
+    }
 
     count++;
   }

@@ -1,0 +1,30 @@
+/node_modules/
+
+# Local environment overrides and credentials
+.env
+.env.*
+.dev.vars
+.dev.vars.*
+.npmrc
+.netrc
+credentials.json
+credentials.local.json
+*.pem
+*.key
+*.p12
+*.pfx
+!.env.example
+!.env.*.example
+!.dev.vars.example
+!.dev.vars.*.example
+!.npmrc.example
+!credentials.example.json
+
+# Local Wrangler state and SQLite databases
+.wrangler/
+*.sqlite
+*.sqlite-*
+*.sqlite3
+*.sqlite3-*
+*.db
+*.db-*
